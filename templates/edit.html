@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}编辑：{{ title }}{% endblock %}
+{% block content %}
+<h1>编辑：{{ title }}</h1>
+<form method="post">
+  <textarea name="content" class="form-control" rows="15">
+    {{ content }}</textarea>
+  <div class="mt-2">
+    <button class="btn btn-primary">保存</button>
+    <a class="btn btn-secondary" href="{{ url_for('view',title=title) }}">
+      取消
+    </a>
+  </div>
+</form>
+{% endblock %}

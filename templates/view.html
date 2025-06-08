@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}查看：{{ title }}{% endblock %}
+{% block head %}
+<link rel="stylesheet"
+ href="https://cdn.jsdelivr.net/npm/katex@0.16.3/dist/katex.min.css">
+<link rel="stylesheet"
+ href="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/styles/github.min.css">
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1>查看：{{ title }}</h1>
+  <div>
+    <a class="btn btn-warning"
+       href="{{ url_for('edit',title=title) }}">编辑</a>
+    {% if mode=='render' %}
+      <a class="btn btn-secondary"
+         href="{{ url_for('view',title=title,mode='raw') }}">
+         原文</a>
+    {% else %}
+      <a class="btn btn-secondary"
+         href="{{ url_for('view',title=title,mode='render') }}">
+         渲染</a>
+    {% endif %}
+    <a class="btn btn-link"
+       href="{{ url_for('management') }}">管理</a>
+  </div>
+</div>
+{% if mode=='raw' %}
+  <pre>{{ content }}</pre>
+{% else %}
+  <div id="md"></div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/markdown-it@13.0.1/dist/markdown-it.min.js">
+</script>
+<script src="https://cdn.jsdelivr.net/npm/markdown-it-katex@3.0.1/dist/markdown-it-katex.min.js">
+</script>
+<script src="https://cdn.jsdelivr.net/npm/markdown-it-highlightjs@3.3.0/dist/markdown-it-highlightjs.min.js">
+</script>
+<script>
+const md = window.markdownit({html:true,linkify:true,typographer:true})
+            .use(window.markdownitKatex)
+            .use(window.markdownitHighlightjs);
+const content = {{ content|tojson }};
+document.getElementById('md').innerHTML = md.render(content);
+</script>
+{% endblock %}

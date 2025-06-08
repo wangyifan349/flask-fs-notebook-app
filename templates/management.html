@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% block title %}管理笔记{% endblock %}
+{% block content %}
+<h1>管理笔记</h1>
+
+<div class="input-group mb-3">
+  <input id="search-input" type="text" class="form-control" placeholder="搜索…">
+  <button id="btn-search" class="btn btn-outline-secondary">🔍</button>
+</div>
+
+<table class="table table-hover">
+  <thead><tr><th>标题</th><th>操作</th></tr></thead>
+  <tbody id="note-list">
+    {% for n in notes %}
+    <tr data-title="{{n.title}}">
+      <td class="title">{{n.title}}</td>
+      <td>
+        <a href="{{ url_for('view', title=n.title) }}" target="_blank"
+           class="btn btn-sm btn-success">查看</a>
+        <button class="btn btn-sm btn-warning btn-rename">重命名</button>
+        <button class="btn btn-sm btn-danger btn-delete">删除</button>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<button id="btn-new" class="btn btn-primary">新建笔记</button>
+
+<!-- Modal -->
+<div class="modal fade" id="mdl" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" id="mdl-form">
+      <div class="modal-header">
+        <h5 class="modal-title" id="mdl-title">标题</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input id="mdl-input" class="form-control" placeholder="输入笔记名">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary"
+                data-bs-dismiss="modal">取消</button>
+        <button id="mdl-ok" class="btn btn-primary">确定</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<hr>
+<h2>文件管理</h2>
+<form id="frm-upload" enctype="multipart/form-data">
+  <input type="file" name="file">
+  <button class="btn btn-sm btn-info">上传</button>
+</form>
+<ul id="file-list" class="list-group mt-2"></ul>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let modal = new bootstrap.Modal('#mdl'), act, oldName;
+function ajax(url, data, cb){
+  fetch(url, {method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(data)})
+  .then(r=>r.json().then(j=>r.ok?cb(j):Promise.reject(j.error)))
+  .catch(e=>alert(e));
+}
+
+// 新建
+document.getElementById('btn-new').onclick = ()=>{
+  act='new'; oldName=''; 
+  document.getElementById('mdl-title').innerText='新建笔记';
+  document.getElementById('mdl-input').value=''; modal.show();
+};
+// 重命名
+document.querySelectorAll('.btn-rename').forEach(btn=>{
+  btn.onclick = e=>{
+    act='rename';
+    let tr=e.target.closest('tr');
+    oldName=tr.dataset.title;
+    document.getElementById('mdl-title').innerText='重命名';
+    document.getElementById('mdl-input').value=oldName;
+    modal.show();
+  };
+});
+// 删除
+document.querySelectorAll('.btn-delete').forEach(btn=>{
+  btn.onclick = e=>{
+    let t=e.target.closest('tr').dataset.title;
+    if(confirm('确定删除？')) {
+      ajax('/note/delete',{title:t},()=>location.reload());
+    }
+  };
+});
+// Modal 确定
+document.getElementById('mdl-ok').onclick = e=>{
+  e.preventDefault();
+  let v=document.getElementById('mdl-input').value.trim();
+  if(act=='new') ajax('/note/new',{title:v},()=>location.reload());
+  else ajax('/note/rename',{old:oldName,new:v},()=>location.reload());
+};
+
+// 搜索
+document.getElementById('btn-search').onclick = ()=>{
+  let q=document.getElementById('search-input').value.trim();
+  if(!q) return location.reload();
+  fetch('/search?q='+encodeURIComponent(q))
+    .then(r=>r.json()).then(list=>{
+      let tb=document.getElementById('note-list');
+      tb.innerHTML='';
+      list.forEach(n=>{
+        let tr=document.createElement('tr');
+        tr.dataset.title=n.title;
+        tr.innerHTML=`<td class="title">${n.title}</td>
+          <td>
+            <a class="btn btn-sm btn-success" target="_blank"
+               href="/view/${n.title}">查看</a>
+            <button class="btn btn-sm btn-warning btn-rename">
+               重命名</button>
+            <button class="btn btn-sm btn-danger btn-delete">
+               删除</button>
+          </td>`;
+        tb.appendChild(tr);
+      });
+      // 简单重绑，或直接 reload 更方便
+      location.reload();
+    });
+};
+
+// 上传文件
+document.getElementById('frm-upload').onsubmit = e=>{
+  e.preventDefault();
+  let fd=new FormData(e.target);
+  fetch('/upload',{method:'POST', body:fd})
+    .then(r=>r.json().then(j=>r.ok?listFiles():alert(j.error)))
+    .catch(e=>alert(e));
+};
+// 列出文件
+function listFiles(){
+  fetch('/files').then(r=>r.json()).then(arr=>{
+    let ul=document.getElementById('file-list');
+    ul.innerHTML='';
+    arr.forEach(f=>{
+      let li=document.createElement('li');
+      li.className='list-group-item';
+      let ext=f.name.split('.').pop().toLowerCase();
+      let link=`<a href="${f.url}" target="_blank">${f.name}</a>`;
+      if(['mp4','mp3','ogg'].includes(ext)){
+        link+=`<br><${ext} controls src="${f.url}"
+          style="max-width:100%;margin-top:5px;"></${ext}>`;
+      }
+      li.innerHTML=link;
+      ul.appendChild(li);
+    });
+  });
+}
+listFiles();
+</script>
+{% endblock %}
